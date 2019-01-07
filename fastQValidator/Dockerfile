@@ -10,8 +10,7 @@ RUN apt-get update -y \
        gcc \
        g++ \
        libc-dev \
-       libz-dev \
-       libnss-sss
+       libz-dev
 
 WORKDIR /tmp
 RUN git clone https://github.com/statgen/libStatGen.git \
