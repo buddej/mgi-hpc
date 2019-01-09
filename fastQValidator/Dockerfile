@@ -34,4 +34,4 @@ RUN apt-get update -y \
   && apt-get install -y --no-install-recommends \
        libnss-sss
 
-CMD ["fastQValidator","--file"]
+ENTRYPOINT ["fastQValidator","--file"]
