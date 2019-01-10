@@ -320,7 +320,6 @@ if [ "${MODE}" = "bam" ] || [ "${MODE}" = "2xfq" ] || [ "${MODE}" = "fq" ]; then
     echo
   done
 fi
-  
 end=$(${DATE}); echo "[$(display_date ${end})] Run finished, overall time $(date_diff ${run_start} ${end})"
 
 exit 0
