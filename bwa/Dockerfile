@@ -45,4 +45,4 @@ COPY ./entrypoint.sh /usr/local/bin/
 ENV PICARD /usr/bin/picard.jar
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-CMD ["/bin/bash"]
+# CMD ["/bin/bash"]

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION="0.1.2"
+VERSION="0.1.3"
 # Entrypoint script for docker container buddej/bwa:${VERSION}
 
 GC_THREADS=2  # benchmarking found this to be the fastest for most jobs, vs. 4 or 8
@@ -21,7 +21,7 @@ if [ -z "${BWA_PIPE_SORT}" ]; then BWA_PIPE_SORT=1; fi  # Assuming pipe directly
 
 # Optional parameters
 #   OUT_DIR     directory to hold output file from this script; defaults to ${INDIR}
-#   SAMPLEID    sample ID, used for determining output filenames. Will be auto-detected from BAMFILE or FQ1 if not supplied
+#   FULLSM    sample ID, used for determining output filenames. Will be auto-detected from BAMFILE or FQ1 if not supplied
 #   CLEANUP     set to 0 (don't cleanup) or 1 (do cleanup) to remove temporary files as the script runs
 #   THREADS     by default set to 4 on ewok, 8 on CHPC
 #   SHELLDROP   Drop to shell instead of running anything (used with docker)
@@ -47,13 +47,14 @@ quit () {
   echo "Leftover files may be in ${WORKDIR}"
   echo "Cleaning up ${SORT_TMP}"
   rm -rfv "${SORT_TMP}"
-  touch "${INDIR}/.${SM_PU}.runfailed"
+  if [ -d "${JOB_TMP}" ]; then rmdir -v "${JOB_TMP}"; fi  # this might fail if files are leftover, but is handy if the job fails early
+  touch "${INDIR}/.${FULLSM_RGID}.runfailed"
   if [ ${CACHING} -eq 1 ]; then
     echo "Cleaning up cached files in /tmp/${PBS_JOBID}"
 #    cd "/tmp/${PBS_JOBID}"
 #    rm -fv "${REF}"* "${FQ}" "${FQ1}" "${FQ2}" 2>/dev/null
   fi
-  /bin/mail -r "docker@${HOSTNAME}" -s "${SYSTEM}: ${SM_PU} FAIL at ${1} (${PBS_JOBID}${SLURM_JOBID}${LSB_JOBID})" "${EMAIL}" < /dev/null > /dev/null
+  # /bin/mail -r "docker@${HOSTNAME}" -s "${SYSTEM}: ${FULLSM_RGID} FAIL at ${1} (${PBS_JOBID}${SLURM_JOBID}${LSB_JOBID})" "${EMAIL}" < /dev/null > /dev/null
   if [ "${SHELLDROP}" -eq 1 ]; then exec "/bin/bash"; else exit 1; fi
 }
 
@@ -75,10 +76,10 @@ while getopts ":1:2:f:b:s:n:w:r:t:cgpei" opt; do
       BAMFILE="$OPTARG"
       ;;
     s)
-      SAMPLEID="$OPTARG"
+      FULLSM="$OPTARG"
       ;;
     n)
-      SM_PU="$OPTARG"
+      FULLSM_RGID="$OPTARG"
       ;;
     w)
       WORKDIR="$OPTARG"
@@ -116,7 +117,7 @@ done
 shift $((OPTIND-1))
 
 # Option for usage in docker
-if [ "${SHELLDROP:-0}" -eq 1 ]; then exec "/bin/bash"; fi
+if [ "${SHELLDROP:=0}" -eq 1 ]; then exec "/bin/bash"; fi
 
 # Remove files as you go. Set to 0 for testing. Only set if CLEANUP has not already been declared at the command line.
 if [ -z "${CLEANUP}" ]; then CLEANUP=1; fi
@@ -124,7 +125,19 @@ if [ -z "${CLEANUP}" ]; then CLEANUP=1; fi
 # Set locations based on ${BASE}, which is set via env variable
 if [ -z "${BASE}" ]; then echo "Error, BASE not specified"; quit "Job Config"; fi
 echo "Running on system ${SYSTEM:=UNDEFINED}, BASE set to ${BASE}"
-if [ -z "${WORKDIR}" ]; then echo "Error, WORKDIR not specified, refuseing to guess an appropriate filesystem"; quit "Job Config"; fi
+if [ -z "${WORKDIR}" ]; then 
+  if [ "${SYSTEM}" = "MGI" ]; then
+    WORKDIR="${BASE}/tmp/${LSB_JOBID}.tmpdir"
+  else 
+    echo "Error, WORKDIR not specified, refusing to guess an appropriate location on this unknown filesystem"
+    quit "Job Config"
+  fi
+fi
+
+if [[ -n "${BAMFILE}" && (-n "${FQ}" || -n "${FQ1}" || -n "${FQ2}") ]]; then
+  echo "Error, BAMFILE and FASTQ files specified as input, this is usually an error with ENV variables"
+  quit "Input File List"
+fi
 
 # Do all file does-it-exist error-checking up front
 if [ -n "${BAMFILE}" ]; then  # If starting with a .bam file
@@ -143,8 +156,8 @@ elif [ -n "${FQ1}" ] && [ -n "${FQ2}" ]; then  # If starting with 2 .fq files
   if [ "${INDIR}" = "${FQ1}" ]; then  # If the file is in the current directory, there will be no slashes in FQ1
     INDIR="."
   fi
-  if [ -z "${SAMPLEID}" ]; then  # Extract ID from filename if not already defined
-    SAMPLEID="${INFILE%_[rR][12].*}"
+  if [ -z "${FULLSM}" ]; then  # Extract ID from filename if not already defined
+    FULLSM="${INFILE%_[rR][12].*}"
   fi
   if [ -z "${RGFILE}" ]; then echo "[ERROR] Must provide RGFILE when running in FQ1+FQ2 mode"; quit "Reading Input File"; fi
   # DEBUG -- this may cause a problem if we ever receive large .fq.bz2 files, but for WES it is okay to uncompress
@@ -158,8 +171,8 @@ elif [ -n "${FQ}" ]; then  # If starting with 1 interleaved .fq file
   if [ "${INDIR}" = "${FQ}" ]; then  # If the FQ is in the current directory, there will be no slashes in FQ
     INDIR="."
   fi
-  if [ -z "${SAMPLEID}" ]; then  # Extract ID from filename if not already defined
-    SAMPLEID="${INFILE%_[rR][12].*}"
+  if [ -z "${FULLSM}" ]; then  # Extract ID from filename if not already defined
+    FULLSM="${INFILE%_[rR][12].*}"
   fi
   if [ -z "${RGFILE}" ]; then echo "[ERROR] Must provide RGFILE when running in FQ mode"; quit "Reading Input File"; fi
   if [[ ${FQ} =~ bz2$ ]]; then echo "Decompressing .fq.bz2 file"; if bunzip2 "${FQ}"; then FQ="${FQ%.bz2}"; else quit "Decompressing Input File"; fi; fi
@@ -171,17 +184,17 @@ else
 fi
 
 if [ -z "${OUT_DIR}" ]; then OUT_DIR="${INDIR}"; fi
-mkdir -p "${OUT_DIR}" || { echo "Error, cannot create ${OUT_DIR}"; quit "Setup JOB_DIR"; }
+mkdir -p "${OUT_DIR}" || { echo "Error, cannot create ${OUT_DIR}"; quit "Setup OUT_DIR"; }
 
 # Create a directory to contain all of the files generated while running the script
-JOB_TMP="$(mktemp -d -p "${WORKDIR}")" \
+JOB_TMP="$(mktemp -d -p "${WORKDIR}/" "${LSB_JOBID:-0}.XXXXXXXXXXXXXXXX")" \
   || { echo "Error, cannot create ${JOB_TMP}"; quit "Setup JOB_TMP"; }
 # Create a directory to contain all of the temporary .bam files
 SORT_TMP="$(mktemp -d -p "${JOB_TMP}")" \
   || { echo "Error, cannot create temporary directory for sorting ${SORT_TMP}"; quit "Setup SORT_TMP"; }
 
 # Just in case of symlinks, which bwa doesn't seem to be able to handle
-REF="$(readlink -f "${BASE}/GATK_pipeline/Reference/human_g1k_v37_decoy.fasta")"
+REF="$(readlink -f "${BASE}/Genome_Ref/GRCh37/bwa_index/human_g1k_v37_decoy.fasta")"
 
 # Setup java Garbage Collection, depending on the number of threads
 if [ "${THREADS:=1}" -eq 1 ]; then
@@ -191,21 +204,21 @@ else
 fi
 MEM=$((32/${THREADS}))
 
-if [ -z "${SM_PU}" ]; then
-  SM_PU="${SAMPLEID}"  # Workaround for now. In the future figure out how many RGs a sample has
+if [ -z "${FULLSM_RGID}" ]; then
+  FULLSM_RGID="${FULLSM}"  # Workaround for now. In the future figure out how many RGs a sample has
 fi
 
 run_start=$(${DATE})
 echo "[$(display_date $(${DATE}))] Starting run on ${SYSTEM}, host ${HOSTNAME}; Run Parameters:"
-touch "${INDIR}/.${SM_PU}.startrun"
-for i in VERSION SYSTEM SLURM_JOB_NODELIST SLURM_NTASKS REF SAMPLEID SM_PU INDIR BAMFILE FQ FQ1 FQ2 RGFILE WORKDIR JOB_TMP SORT_TMP OUT_DIR BWA_PIPE_SORT THREADS CLEANUP RUN_TYPE MODE FASTQ_TYPE CACHING; do
+touch "${INDIR}/.${FULLSM_RGID}.startrun"
+for i in VERSION SYSTEM SLURM_JOB_NODELIST SLURM_NTASKS REF FULLSM FULLSM_RGID INDIR BAMFILE FQ FQ1 FQ2 RGFILE WORKDIR JOB_TMP SORT_TMP OUT_DIR BWA_PIPE_SORT THREADS CLEANUP RUN_TYPE MODE FASTQ_TYPE CACHING; do
   if [ ! -z ${!i} ]; then  # bash indirection: not the value of $i, but the value of the parameter name in $i
     printf "%26s ${!i}\n" "${i}"
   fi
 done
 echo
 echo "[$(display_date $(${DATE}))] Contents of working directory ${JOB_TMP}:"
-ls -ltr "${JOB_TMP}" | sed '1d' | grep -vE "${SM_PU}.out|${SM_PU}.err"
+ls -ltr "${JOB_TMP}" | sed '1d' | grep -vE "${FULLSM_RGID}.out|${FULLSM_RGID}.err"
 echo
 
 # Align the input file (.bam or .fq or .r1.fq + .r2.fq)
@@ -247,15 +260,11 @@ if [ "${MODE}" = "bam" ] || [ "${MODE}" = "2xfq" ] || [ "${MODE}" = "fq" ]; then
        echo "[$(display_date $(${DATE}))] Loading ReadGroup info from ${RGFILE}"
        RG=$(<${RGFILE})
        if [ ${BWA_PIPE_SORT} -eq 1 ]; then
-         SAMTOOLS_CMD=(samtools sort -@ "${THREADS}" -m "${MEM}G" -o "${JOB_TMP}/${SM_PU}.aln.srt.bam" -T "${SORT_TMP}/")
-         # SAMTOOLS_CMD="samtools sort -@ ${THREADS} -m ${MEM}G -o ${JOB_TMP}/${SM_PU}.aln.srt.bam -T ${SORT_TMP}/"
+         SAMTOOLS_CMD=(samtools sort -@ "${THREADS}" -m "${MEM}G" -o "${OUT_DIR}/${FULLSM_RGID}.aln.srt.bam" -T "${SORT_TMP}/")
        else
-         SAMTOOLS_CMD=(samtools view -b -1 -o "${JOB_TMP}/${SM_PU}.aln.bam")
-         SAMTOOLS_CMD+=(\&\& samtools sort -@ "${THREADS}" -m "${MEM}G" -o "${JOB_TMP}/${SM_PU}.aln.srt.bam" -T "${SORT_TMP}/" "${JOB_TMP}/${SM_PU}.aln.bam")
-         SAMTOOLS_CMD+=(\&\& rm -fv "${JOB_TMP}/${SM_PU}.aln.bam")
-         # SAMTOOLS_CMD="samtools view -b -1 -o ${JOB_TMP}/${SM_PU}.aln.bam"
-         # SAMTOOLS_CMD+=" && samtools sort -@ ${THREADS} -m ${MEM}G -o ${JOB_TMP}/${SM_PU}.aln.srt.bam -T ${SORT_TMP}/ ${JOB_TMP}/${SM_PU}.aln.bam"
-         # SAMTOOLS_CMD+=" && rm -fv ${JOB_TMP}/${SM_PU}.aln.bam"
+         SAMTOOLS_CMD=(samtools view -b -1 -o "${JOB_TMP}/${FULLSM_RGID}.aln.bam")
+         SAMTOOLS_CMD+=(\&\& samtools sort -@ "${THREADS}" -m "${MEM}G" -o "${OUT_DIR}/${FULLSM_RGID}.aln.srt.bam" -T "${SORT_TMP}/" "${JOB_TMP}/${FULLSM_RGID}.aln.bam")
+         SAMTOOLS_CMD+=(\&\& rm -fv "${JOB_TMP}/${FULLSM_RGID}.aln.bam")
        fi
        if [ ! -z "${TIMING}" ]; then TIMING=(/usr/bin/time -v); SAMTOOLS_CMD=("${TIMING[@]}" "${SAMTOOLS_CMD[@]}"); fi
        if [ "${MODE}" = "bam" ]; then
@@ -283,24 +292,24 @@ if [ "${MODE}" = "bam" ] || [ "${MODE}" = "2xfq" ] || [ "${MODE}" = "fq" ]; then
     else
       echo "[$(display_date $(${DATE}))] Warning, no RGFILE not specified or cannot be read. Not adding RG info to .bam"
         "${TIMING[@]}" bwa mem -t ${THREADS} -M "${REF}" "${FQ1}" "${FQ2}" \
-          | java -Djava.io.tmpdir=${JOB_TMP}/${SM_PU} ${JAVAOPTS} \
+          | java -Djava.io.tmpdir=${JOB_TMP}/${FULLSM_RGID} ${JAVAOPTS} \
               -jar "${PICARD}" SortSam \
               I=/dev/stdin \
-              O="${SM_PU}.srt.bam" \
+              O="${FULLSM_RGID}.srt.bam" \
               SO=coordinate \
               MAX_RECORDS_IN_RAM=2000000
     fi
     arr=(${PIPESTATUS[@]})
     exitcode=0; for i in ${arr[@]}; do ((exitcode+=i)); done
     end=$(${DATE}); echo "[$(display_date ${end})] ${CUR_STEP} finished, exit codes: ${arr[@]}, step time $(date_diff ${start} ${end})"
-    ls -ltr "${JOB_TMP}" | sed '1d' | grep -vE "${SM_PU}.out|${SM_PU}.err"
+    ls -ltr "${JOB_TMP}" | sed '1d' | grep -vE "${FULLSM_RGID}.out|${FULLSM_RGID}.err"
     if [ ${exitcode} -eq 0 ]; then
       bwa_done=1;
-      mv -vi "${JOB_TMP}/${SM_PU}.aln.srt.bam" "${OUT_DIR}/"
       if [ ${CLEANUP} -eq 1 ]; then
         # Remove temporary directory created by SortSam
-        if [ -d "${JOB_TMP}/${SM_PU}/${USER}" ]; then rm -rfv "${JOB_TMP}/${SM_PU}/${USER}"; fi
+        if [ -d "${JOB_TMP}/${FULLSM_RGID}/${USER}" ]; then rm -rfv "${JOB_TMP}/${FULLSM_RGID}/${USER}"; fi
         if [ -d "${SORT_TMP}" ]; then rm -rfv "${SORT_TMP}"; fi
+        if [ -d "${JOB_TMP}" ]; then rmdir -v "${JOB_TMP}"; fi
         if [ "${MODE}" = "bam" ] || [ "${SYSTEM}" = "CHPC2" ]; then rm -fv "${BAMFILE}"; fi
         if { [ "${MODE}" = "2xfq" ] || [ "${MODE}" = "fq" ]; } && { [ "${SYSTEM}" = "CHPC2" ] || [ "${SYSTEM}" = "FSL" ]; }; then
           if [ ${CACHING} -eq 1 ]; then

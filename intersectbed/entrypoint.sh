@@ -1,13 +1,14 @@
 #!/bin/bash
 
 VERSION="0.1.0"
-# Entrypoint script for docker container buddej/validatesam:${VERSION}
+# Entrypoint script for docker container buddej/intersectbed:${VERSION}
 
 # Parameters must be defined so the script knows which file(s) to process
 
 # Required parameters (must provide or container will quit)
-#   BASE       location of reference files (needed for picard NM validation)
-#   BAMFILE    .sam or .bam input file to validate
+##   BASE       location of reference files
+#   BAMFILE    .sam or .bam input file to intersect
+#   RUN_TYPE   genome, paddedexome, or exome -- the type of intersect to perform
 
 # Optional parameters
 #   SHELLDROP   Drop to shell instead of running anything (used with docker)
@@ -42,7 +43,7 @@ trap "echo \"[$(display_date $(${DATE}))] Terminated by SIGTERM \" && sleep 10s"
 if [ "${SHELLDROP:=0}" -eq 1 ]; then exec "/bin/bash"; fi
 
 if [ -z "${BAMFILE}" ]; then
-    echo "ERROR, must provide .sam or .bam file in variable \${BAMFILE}"
+    echo "ERROR, must provide .bam file in variable \${BAMFILE}"
     quit "Input File"
 fi
 if [ ! -r "${BAMFILE}" ]; then
@@ -50,24 +51,33 @@ if [ ! -r "${BAMFILE}" ]; then
     echo "Please make sure you provide the full path"
     quit "Input File"
 fi
+if [ -z "${RUN_TYPE}" ]; then
+    echo "ERROR, must provide run type (genome, paddedexome, exome) in variable \${RUN_TYPE}"
+    # TODO: Should validate RUN_TYPE against genome, exome, paddedexome
+    quit "Job Config"
+fi
 
 # Set locations based on ${BASE}, which is set via env variable
 # Maybe consider dropping this requirement and skipping NM validation
-if [ -z "${BASE}" ]; then echo "Error, BASE not specified"; quit "Job Config"; fi
-echo "Running on system ${SYSTEM:=UNDEFINED}, BASE set to ${BASE}"
+##  if [ -z "${BASE}" ]; then echo "Error, BASE not specified"; quit "Job Config"; fi
+##  echo "Running on system ${SYSTEM:=UNDEFINED}, BASE set to ${BASE}"
 
 if [ ! -z "${TIMING}" ]; then TIMING=(/usr/bin/time -v); fi
 
-# Just in case of symlinks, which cause problems for some programs
-REF="$(readlink -f "${BASE}/GATK_pipeline/Reference/human_g1k_v37_decoy.fasta")"
-
-# export MALLOC_ARENA_MAX=4
-JAVAOPTS="-Xms2g -Xmx4g -XX:+UseSerialGC -Dpicard.useLegacyParser=false"
-
-# ValidateSamFile
-start=$(${DATE}); echo "[$(display_date ${start})] ValidateSamFile starting"
-"${TIMING[@]}" java ${JAVAOPTS} -jar "${PICARD}" ValidateSamFile -R "${REF}" -I "${BAMFILE}" "$@"
-exitcode=$?
-end=$(${DATE}); echo "[$(display_date ${end})] ValidateSamFile finished, exit code: ${exitcode}, step time $(date_diff ${start} ${end})"
+if [ "${RUN_TYPE}" = "genome" ]; then
+    cp -a "${BAMFILE}" "${BAMFILE%.bam}.isec-${RUN_TYPE}.bam"
+    # cp to preserve the ${FULLSM_RGID}_sorted.bam, which might be reused for a WGS analysis later
+else
+    # INPUT: _sorted.bam; OUTPUT: _${RUN_TYPE}_sorted.bam
+    start=$(${DATE}); echo "[$(display_date ${start})] intersectBed starting"
+    if [ "${RUN_TYPE}" = "exome" ]; then
+      BEDFILE="${COVERED_BED}"
+    elif [ "${RUN_TYPE}" = "paddedexome" ]; then
+      BEDFILE="${PADDED_BED}"
+    fi
+    "${TIMING[@]}" bedtools intersect -u -a "${BAMFILE}" -b "${BEDFILE}" > "${BAMFILE%.bam}.isec-${RUN_TYPE}.bam"
+    exitcode=$?
+    end=$(${DATE}); echo "[$(display_date ${end})] intersectBed finished, exit code: ${exitcode}, step time $(date_diff ${start} ${end})"
+fi
 
 exit ${exitcode}

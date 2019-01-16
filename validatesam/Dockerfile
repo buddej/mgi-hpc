@@ -24,5 +24,13 @@ RUN apt-get update -y \
 COPY ./entrypoint.sh /usr/local/bin/
 ENV PICARD /usr/bin/picard.jar
 
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-# CMD ["/bin/bash"]
+# This has to be written with CMD for running with LSF/bsub, since you cannot bsub a job with no command specified (even a dockerapp)
+# This allows passing of additional parameters (e.g. -IGNORE MATE_NOT_FOUND) if required
+# Usage examples: 
+#   sudo docker run -it buddej/validatesam:0.1.0
+#   sudo docker run -it buddej/validatesam:0.1.0 entrypoint.sh -IGNORE MATE_NOT_FOUND
+#   bsub -Is -q research-hpc -a "docker(buddej/validatesam:0.1.0)" entrypoint.sh
+#   bsub -Is -q research-hpc -a "docker(buddej/validatesam:0.1.0)" entrypoint.sh -IGNORE MATE_NOT_FOUND
+
+# ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["/usr/local/bin/entrypoint.sh"]
