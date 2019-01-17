@@ -6,7 +6,6 @@ VERSION="0.1.0"
 # Parameters must be defined so the script knows which file(s) to process
 
 # Required parameters (must provide or container will quit)
-##   BASE       location of reference files
 #   BAMFILE    .sam or .bam input file to intersect
 #   RUN_TYPE   genome, paddedexome, or exome -- the type of intersect to perform
 
@@ -57,16 +56,11 @@ if [ -z "${RUN_TYPE}" ]; then
     quit "Job Config"
 fi
 
-# Set locations based on ${BASE}, which is set via env variable
-# Maybe consider dropping this requirement and skipping NM validation
-##  if [ -z "${BASE}" ]; then echo "Error, BASE not specified"; quit "Job Config"; fi
-##  echo "Running on system ${SYSTEM:=UNDEFINED}, BASE set to ${BASE}"
-
 if [ ! -z "${TIMING}" ]; then TIMING=(/usr/bin/time -v); fi
 
 if [ "${RUN_TYPE}" = "genome" ]; then
+    # cp to preserve the ${FULLSM_RGID}.aln.srt.bam, which might be reused for a WGS analysis later
     cp -a "${BAMFILE}" "${BAMFILE%.bam}.isec-${RUN_TYPE}.bam"
-    # cp to preserve the ${FULLSM_RGID}_sorted.bam, which might be reused for a WGS analysis later
 else
     # INPUT: _sorted.bam; OUTPUT: _${RUN_TYPE}_sorted.bam
     start=$(${DATE}); echo "[$(display_date ${start})] intersectBed starting"

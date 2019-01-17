@@ -12,16 +12,18 @@ if [ -z "${BWA_PIPE_SORT}" ]; then BWA_PIPE_SORT=1; fi  # Assuming pipe directly
 
 # Required parameters (must provide or container will quit)
 #   BASE        location of reference files for alignment
-#   WORKDIR     parent directory to create JOB_TMP directory to hold all files. Often uses ${PBS_JOBID} or ${SLURM_JOBID} or ${LSB_JOBID}
-# Required parameters (choose 1)
+
+# Required parameters (choose BAMFILE or FQ1+FQ2+RGFILE or FQ+RGFILE)
 #   BAMFILE     starting .bam file to operate on (not required if FQ1 and FQ2 are given)
 #   FQ1, FQ2    starting .fastq files to operate on (not required if BAMFILE is given)
 #   FQ          starting from a single interleaved .fastq, .fq, .fastq.gz, or .fq.gz file
 #   RGFILE      required if providing FQ1+FQ2 or FQ
 
 # Optional parameters
+#   WORKDIR     parent directory to create JOB_TMP directory to hold all files. Often uses ${PBS_JOBID} or ${SLURM_JOBID} or ${LSB_JOBID}. Required on fenix
 #   OUT_DIR     directory to hold output file from this script; defaults to ${INDIR}
-#   FULLSM    sample ID, used for determining output filenames. Will be auto-detected from BAMFILE or FQ1 if not supplied
+#   FULLSM      sample ID, used for determining output filenames. Will be auto-detected from BAMFILE or FQ1 if not supplied
+#   FULLSM_RGID sample ID_RGID, used for determining output filenames. Will be set to FULLSM if not supplied
 #   CLEANUP     set to 0 (don't cleanup) or 1 (do cleanup) to remove temporary files as the script runs
 #   THREADS     by default set to 4 on ewok, 8 on CHPC
 #   SHELLDROP   Drop to shell instead of running anything (used with docker)
@@ -44,7 +46,7 @@ date_diff () {
 
 quit () {
   echo "[$(display_date $(${DATE}))] Run failed at ${1} step, exit code: 1"
-  echo "Leftover files may be in ${WORKDIR}"
+  echo "Leftover files may be in ${JOB_TMP}"
   echo "Cleaning up ${SORT_TMP}"
   rm -rfv "${SORT_TMP}"
   if [ -d "${JOB_TMP}" ]; then rmdir -v "${JOB_TMP}"; fi  # this might fail if files are leftover, but is handy if the job fails early
@@ -55,7 +57,7 @@ quit () {
 #    rm -fv "${REF}"* "${FQ}" "${FQ1}" "${FQ2}" 2>/dev/null
   fi
   # /bin/mail -r "docker@${HOSTNAME}" -s "${SYSTEM}: ${FULLSM_RGID} FAIL at ${1} (${PBS_JOBID}${SLURM_JOBID}${LSB_JOBID})" "${EMAIL}" < /dev/null > /dev/null
-  if [ "${SHELLDROP}" -eq 1 ]; then exec "/bin/bash"; else exit 1; fi
+  if [ "${SHELLDROP}" -eq 1 ]; then echo "Dropping to shell"; exec "/bin/bash"; else exit 1; fi
 }
 
 # trap "{ echo \"[$(display_date $(${DATE}))] Terminated by SIGTERM \"; quit \"${CUR_STEP}\"; }" SIGTERM
@@ -117,7 +119,7 @@ done
 shift $((OPTIND-1))
 
 # Option for usage in docker
-if [ "${SHELLDROP:=0}" -eq 1 ]; then exec "/bin/bash"; fi
+if [ "${SHELLDROP:=0}" -eq 1 ]; then echo "Dropping to shell"; exec "/bin/bash"; else exit 1; fi
 
 # Remove files as you go. Set to 0 for testing. Only set if CLEANUP has not already been declared at the command line.
 if [ -z "${CLEANUP}" ]; then CLEANUP=1; fi

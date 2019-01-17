@@ -59,9 +59,8 @@ echo "Running on system ${SYSTEM:=UNDEFINED}, BASE set to ${BASE}"
 if [ ! -z "${TIMING}" ]; then TIMING=(/usr/bin/time -v); fi
 
 # Just in case of symlinks, which cause problems for some programs
-REF="$(readlink -f "${BASE}/GATK_pipeline/Reference/human_g1k_v37_decoy.fasta")"
+REF="$(readlink -f "${BASE}/Genome_Ref/GRCh37/bwa_index/human_g1k_v37_decoy.fasta")"
 
-# export MALLOC_ARENA_MAX=4
 JAVAOPTS="-Xms2g -Xmx4g -XX:+UseSerialGC -Dpicard.useLegacyParser=false"
 
 # ValidateSamFile
