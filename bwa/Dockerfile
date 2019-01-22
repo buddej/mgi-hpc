@@ -1,7 +1,10 @@
 FROM openjdk:8-jre
-MAINTAINER John Budde <budde@wustl.edu>
+LABEL maintainer="John Budde <budde@wustl.edu>"
 
-LABEL Image for bwa
+LABEL org.label-schema.schema-version="1.0"
+# LABEL org.label-schema.build-date=$BUILD_DATE
+LABEL org.label-schema.name="buddej/bwa"
+LABEL org.label-schema.description="Image for bwa"
 
 ENV BWA_VERSION 0.7.17
 ENV PICARD_VERSION 2.18.21

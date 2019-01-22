@@ -32,14 +32,14 @@ date_diff () {
 quit () {
   echo "[$(display_date $(${DATE}))] Run failed at ${1} step, exit code: 1"
   # /bin/mail -r "docker@${HOSTNAME}" -s "${SYSTEM}: ${BAMFILE} FAIL at ${1} (${PBS_JOBID}${SLURM_JOBID}${LSB_JOBID})" "${EMAIL}" < /dev/null > /dev/null
-  if [ "${SHELLDROP}" -eq 1 ]; then exec "/bin/bash"; else exit 1; fi
+  if [ "${SHELLDROP}" -eq 1 ]; then echo "Dropping to shell"; exec "/bin/bash"; else exit 1; fi
 }
 
 # trap "{ echo \"[$(display_date $(${DATE}))] Terminated by SIGTERM \"; quit \"${CUR_STEP}\"; }" SIGTERM
 trap "echo \"[$(display_date $(${DATE}))] Terminated by SIGTERM \" && sleep 10s" SIGTERM
 
 # Option for usage in docker
-if [ "${SHELLDROP:=0}" -eq 1 ]; then exec "/bin/bash"; fi
+if [ "${SHELLDROP:=0}" -eq 1 ]; then echo "Dropping to shell"; exec "/bin/bash"; fi
 
 if [ -z "${BAMFILE}" ]; then
     echo "ERROR, must provide .sam or .bam file in variable \${BAMFILE}"

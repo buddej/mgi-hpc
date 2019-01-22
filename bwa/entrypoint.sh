@@ -119,7 +119,7 @@ done
 shift $((OPTIND-1))
 
 # Option for usage in docker
-if [ "${SHELLDROP:=0}" -eq 1 ]; then echo "Dropping to shell"; exec "/bin/bash"; else exit 1; fi
+if [ "${SHELLDROP:=0}" -eq 1 ]; then echo "Dropping to shell"; exec "/bin/bash"; fi
 
 # Remove files as you go. Set to 0 for testing. Only set if CLEANUP has not already been declared at the command line.
 if [ -z "${CLEANUP}" ]; then CLEANUP=1; fi

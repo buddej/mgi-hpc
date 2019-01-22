@@ -1,7 +1,10 @@
 FROM openjdk:8-jre
-MAINTAINER John Budde <budde@wustl.edu>
+LABEL maintainer="John Budde <budde@wustl.edu>"
 
-LABEL Image for bwa
+LABEL org.label-schema.schema-version="1.0"
+# LABEL org.label-schema.build-date=$BUILD_DATE
+LABEL org.label-schema.name="buddej/bwa"
+LABEL org.label-schema.description="Image for picard"
 
 ENV PICARD_VERSION 2.18.21
 
@@ -27,10 +30,12 @@ ENV PICARD /usr/bin/picard.jar
 # This has to be written with CMD for running with LSF/bsub, since you cannot bsub a job with no command specified (even a dockerapp)
 # This allows passing of additional parameters (e.g. -IGNORE MATE_NOT_FOUND) if required
 # Usage examples: 
-#   sudo docker run -it buddej/validatesam:0.1.0
-#   sudo docker run -it buddej/validatesam:0.1.0 entrypoint.sh -IGNORE MATE_NOT_FOUND
-#   bsub -Is -q research-hpc -a "docker(buddej/validatesam:0.1.0)" entrypoint.sh
-#   bsub -Is -q research-hpc -a "docker(buddej/validatesam:0.1.0)" entrypoint.sh -IGNORE MATE_NOT_FOUND
+#   Validating a normal, complete .bam (i.e. no reads removed)
+#     sudo docker run -it buddej/validatesam:0.1.0
+#     bsub -Is -q research-hpc -a "docker(buddej/validatesam:0.1.0)" entrypoint.sh
+#   Validating a .bam that has been intersected with an exome .bed
+#     sudo docker run -it buddej/validatesam:0.1.0 entrypoint.sh -IGNORE MATE_NOT_FOUND
+#     bsub -Is -q research-hpc -a "docker(buddej/validatesam:0.1.0)" entrypoint.sh -IGNORE MATE_NOT_FOUND
 
 # ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["/usr/local/bin/entrypoint.sh"]

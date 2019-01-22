@@ -1,7 +1,4 @@
 FROM phusion/baseimage:0.11 as builder
-MAINTAINER John Budde <budde@wustl.edu>
-
-LABEL Image for bedtools
 
 ENV BEDTOOLS_VERSION 2.27.1
 
@@ -19,7 +16,15 @@ RUN apt-get update -y \
   && cd /tmp/bedtools${BEDTOOLS_VERSION%%.*}/ \
   && make
 
+
 FROM phusion/baseimage:0.11
+LABEL maintainer="John Budde <budde@wustl.edu>"
+
+LABEL org.label-schema.schema-version="1.0"
+# LABEL org.label-schema.build-date=$BUILD_DATE
+LABEL org.label-schema.name="buddej/bwa"
+LABEL org.label-schema.description="Image for bedtools"
+
 RUN apt-get update -y \
   && apt-get install --no-install-recommends -y \
        libnss-sss \

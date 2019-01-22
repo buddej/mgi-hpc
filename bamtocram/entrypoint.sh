@@ -43,7 +43,7 @@ quit () {
 trap "echo \"[$(display_date $(${DATE}))] Terminated by SIGTERM \" && sleep 10s" SIGTERM
 
 # Option for usage in docker
-if [ "${SHELLDROP:=0}" -eq 1 ]; then echo "Dropping to shell"; exec "/bin/bash"; else exit 1; fi
+if [ "${SHELLDROP:=0}" -eq 1 ]; then echo "Dropping to shell"; exec "/bin/bash"; fi
 
 if [ -z "${BAMFILE}" ]; then
     echo "ERROR, must provide .sam or .bam file in variable \${BAMFILE}"
@@ -73,7 +73,6 @@ JOB_TMP="$(mktemp -d -p "${WORKDIR}/" "${LSB_JOBID:-0}.XXXXXXXXXXXXXXXX")" \
   || { echo "Error, cannot create ${JOB_TMP}"; quit "Setup JOB_TMP"; }
 
 if ! [ -z "${TIMING}" ]; then TIMING=(/usr/bin/time -v); fi
-if ! [ -z "${OUT_DIR}" ]; then 
 if [ -z "${OUT_DIR}" ]; then OUT_DIR="${BASE}/completed_jobs"; fi
 mkdir -p "${OUT_DIR}" || { echo "Error, cannot create ${OUT_DIR}"; quit "Setup OUT_DIR"; }
 
@@ -95,7 +94,7 @@ fi
 # Convert bam to cram
 start=$(${DATE}); echo "[$(display_date ${start})] bamtocram starting"
 # Output is staged in ${JOB_TMP} and moved to ${OUT_DIR} only once complete (to complement with other automation workflows)
-"${TIMING[@]}" mv -vi "${BAMFILE}" "${JOB_TMP}" \
+mv -vi "${BAMFILE}" "${JOB_TMP}" \
   && "${TIMING[@]}" samtools view -T "${REF}" -C -o "${JOB_TMP}/${CRAMFILENAME}" "${JOB_TMP}/${BAMFILENAME}"
 exitcode="$?"
 end=$(${DATE}); echo "[$(display_date ${end})] bamtocram finished, exit code: ${exitcode}, step time $(date_diff ${start} ${end})"
