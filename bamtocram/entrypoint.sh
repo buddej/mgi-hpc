@@ -101,7 +101,8 @@ end=$(${DATE}); echo "[$(display_date ${end})] bamtocram finished, exit code: ${
 
 if [ ${exitcode} -eq 0 ]; then
   mv -vi "${JOB_TMP}/${CRAMFILENAME}" "${OUT_DIR}/" \
-    && rm -fv "${JOB_TMP}/${BAMFILENAME}"
+    && rm -fv "${JOB_TMP}/${BAMFILENAME}" \
+    && rmdir -v "${JOB_TMP}"
 else
   echo "ERROR, convertion to .cram failed"
   quit "samtools view"
