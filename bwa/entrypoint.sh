@@ -130,6 +130,7 @@ echo "Running on system ${SYSTEM:=UNDEFINED}, BASE set to ${BASE}"
 if [ -z "${WORKDIR}" ]; then 
   if [ "${SYSTEM}" = "MGI" ]; then
     WORKDIR="${BASE}/tmp/${LSB_JOBID}.tmpdir"
+    mkdir -p "${WORKDIR}" || { echo "Error, cannot create ${OUT_DIR}"; quit "Setup WORKDIR"; }
   else 
     echo "Error, WORKDIR not specified, refusing to guess an appropriate location on this unknown filesystem"
     quit "Job Config"
@@ -271,7 +272,7 @@ if [ "${MODE}" = "bam" ] || [ "${MODE}" = "2xfq" ] || [ "${MODE}" = "fq" ]; then
        if [ ! -z "${TIMING}" ]; then TIMING=(/usr/bin/time -v); SAMTOOLS_CMD=("${TIMING[@]}" "${SAMTOOLS_CMD[@]}"); fi
        if [ "${MODE}" = "bam" ]; then
          "${TIMING[@]}" bwa mem -t ${THREADS} -R "${RG}" -M -p "${REF}" \
-           <(java \
+           <(/usr/bin/java \
                -Dsamjdk.buffer_size=131072 \
                -Dsamjdk.compression_level=1 \
                -XX:GCTimeLimit=50 \
@@ -294,7 +295,7 @@ if [ "${MODE}" = "bam" ] || [ "${MODE}" = "2xfq" ] || [ "${MODE}" = "fq" ]; then
     else
       echo "[$(display_date $(${DATE}))] Warning, no RGFILE not specified or cannot be read. Not adding RG info to .bam"
         "${TIMING[@]}" bwa mem -t ${THREADS} -M "${REF}" "${FQ1}" "${FQ2}" \
-          | java -Djava.io.tmpdir=${JOB_TMP}/${FULLSM_RGID} ${JAVAOPTS} \
+          | /usr/bin/java -Djava.io.tmpdir=${JOB_TMP}/${FULLSM_RGID} ${JAVAOPTS} \
               -jar "${PICARD}" SortSam \
               I=/dev/stdin \
               O="${FULLSM_RGID}.srt.bam" \

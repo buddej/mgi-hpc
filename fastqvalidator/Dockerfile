@@ -1,13 +1,9 @@
-FROM phusion/baseimage:0.11
-MAINTAINER John Budde <budde@wustl.edu>
-
-LABEL Image for fastQValidator (Abecasis)
+FROM phusion/baseimage:0.11 as builder
 
 RUN apt-get update -y \
   && apt-get install -y --no-install-recommends \
        git \
        make \
-       gcc \
        g++ \
        libc-dev \
        libz-dev
@@ -20,18 +16,24 @@ RUN git clone https://github.com/statgen/libStatGen.git \
   && cd ../fastQValidator \
   && make all
 
-# No longer need cleanup since multi-state build
-# RUN cd / \
-#   && rm -rf /tmp/* \
-#   && apt-get autoremove -y \
-#   && apt-get autoclean -y \
-#   && apt-get clean \
-#   && rm -rf /var/lib/apt/lists/* \
-
 FROM phusion/baseimage:0.11
-COPY --from=0 /tmp/fastQValidator/bin/fastQValidator /usr/bin/fastQValidator
+LABEL maintainer="John Budde <budde@wustl.edu>"
+
+LABEL org.label-schema.schema-version="1.0"
+# LABEL org.label-schema.build-date=$BUILD_DATE
+LABEL org.label-schema.name="buddej/fastqvalidator"
+LABEL org.label-schema.description="Image for fastQValidator (Abecasis)"
+
 RUN apt-get update -y \
-  && apt-get install -y --no-install-recommends \
-       libnss-sss
+  && apt-get install --no-install-recommends -y \
+       libnss-sss \
+       time \
+       tzdata \
+  && apt-get clean all \
+  && rm -rfv /var/lib/apt/lists/* /tmp/* /var/tmp/* 
+
+ENV TZ "America/Chicago"
+
+COPY --from=builder /tmp/fastQValidator/bin/fastQValidator /usr/bin/
 
 ENTRYPOINT ["fastQValidator","--file"]

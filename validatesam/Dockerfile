@@ -3,7 +3,7 @@ LABEL maintainer="John Budde <budde@wustl.edu>"
 
 LABEL org.label-schema.schema-version="1.0"
 # LABEL org.label-schema.build-date=$BUILD_DATE
-LABEL org.label-schema.name="buddej/bwa"
+LABEL org.label-schema.name="buddej/validatesam"
 LABEL org.label-schema.description="Image for picard"
 
 ENV PICARD_VERSION 2.18.21
