@@ -10,6 +10,8 @@ LABEL org.label-schema.description="Image for trickle per mcallaway"
 RUN apt-get update -y \
   && apt-get install --no-install-recommends -y \
        libnss-sss \
+       time \
+       tzdata \
        ssh \
        rsync \
        wget \
@@ -17,7 +19,10 @@ RUN apt-get update -y \
        trickle \
        lftp \
        bsdmainutils \
+       jq \
   && apt-get clean all \
   && rm -rf /var/lib/apt/lists/*
+
+ENV TZ "America/Chicago"
 
 CMD ["/bin/bash"]
