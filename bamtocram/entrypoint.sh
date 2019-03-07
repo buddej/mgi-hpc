@@ -11,7 +11,7 @@ VERSION="0.1.0"
 
 # Optional parameters
 #   CRAMFILE   .cram output file; defaults to ${BAMFILE%.bam}.cram
-#   OUT_DIR     directory to place completed .cram file; defaults to ${BASE}/completed_jobs
+#   OUT_DIR     directory to place completed .cram file; defaults to ${BASE}/variant_calling/completed_jobs
 #   WORKDIR     parent directory to create JOB_TMP directory to hold all files. Often uses ${PBS_JOBID} or ${SLURM_JOBID} or ${LSB_JOBID}. Required on fenix
 #   SHELLDROP   Drop to shell instead of running anything (used with docker)
 #   TIMING      Do /usr/bin/time -v timing of steps
@@ -73,7 +73,7 @@ JOB_TMP="$(mktemp -d -p "${WORKDIR}/" "${LSB_JOBID:-0}.XXXXXXXXXXXXXXXX")" \
   || { echo "Error, cannot create ${JOB_TMP}"; quit "Setup JOB_TMP"; }
 
 if ! [ -z "${TIMING}" ]; then TIMING=(/usr/bin/time -v); fi
-if [ -z "${OUT_DIR}" ]; then OUT_DIR="${BASE}/completed_jobs"; fi
+if [ -z "${OUT_DIR}" ]; then OUT_DIR="${BASE}/variant_calling/completed_jobs"; fi
 mkdir -p "${OUT_DIR}" || { echo "Error, cannot create ${OUT_DIR}"; quit "Setup OUT_DIR"; }
 
 

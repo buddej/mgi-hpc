@@ -20,7 +20,7 @@ if [ -z "${BWA_PIPE_SORT}" ]; then BWA_PIPE_SORT=1; fi  # Assuming pipe directly
 #   RGFILE      required if providing FQ1+FQ2 or FQ
 
 # Optional parameters
-#   WORKDIR     parent directory to create JOB_TMP directory to hold all files. Often uses ${PBS_JOBID} or ${SLURM_JOBID} or ${LSB_JOBID}. Required on fenix
+#   WORKDIR     parent directory to create JOB_TMP directory to hold all files (which often uses ${PBS_JOBID} or ${SLURM_JOBID} or ${LSB_JOBID}). Required on fenix
 #   OUT_DIR     directory to hold output file from this script; defaults to ${INDIR}
 #   FULLSM      sample ID, used for determining output filenames. Will be auto-detected from BAMFILE or FQ1 if not supplied
 #   FULLSM_RGID sample ID_RGID, used for determining output filenames. Will be set to FULLSM if not supplied
@@ -127,14 +127,17 @@ if [ -z "${CLEANUP}" ]; then CLEANUP=1; fi
 # Set locations based on ${BASE}, which is set via env variable
 if [ -z "${BASE}" ]; then echo "Error, BASE not specified"; quit "Job Config"; fi
 echo "Running on system ${SYSTEM:=UNDEFINED}, BASE set to ${BASE}"
-if [ -z "${WORKDIR}" ]; then 
+
+if [ -z "${WORKDIR}" ]; then
   if [ "${SYSTEM}" = "MGI" ]; then
-    WORKDIR="${BASE}/tmp/${LSB_JOBID}.tmpdir"
-    mkdir -p "${WORKDIR}" || { echo "Error, cannot create ${OUT_DIR}"; quit "Setup WORKDIR"; }
-  else 
+    WORKDIR="${BASE}/tmp/"
+    mkdir -p "${WORKDIR}" || { echo "Error, cannot create ${WORKDIR}"; quit "Setup WORKDIR"; }
+  else
     echo "Error, WORKDIR not specified, refusing to guess an appropriate location on this unknown filesystem"
     quit "Job Config"
   fi
+else
+  mkdir -p "${WORKDIR}" || || { echo "Error, cannot create ${WORKDIR}"; quit "Setup WORKDIR"; }
 fi
 
 if [[ -n "${BAMFILE}" && (-n "${FQ}" || -n "${FQ1}" || -n "${FQ2}") ]]; then

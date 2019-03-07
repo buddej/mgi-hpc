@@ -14,7 +14,7 @@ VERSION="0.1.0"
 
 # Optional parameters
 #   WORKDIR     parent directory to create JOB_TMP directory to hold all files. Often uses ${PBS_JOBID} or ${SLURM_JOBID} or ${LSB_JOBID}. Required on fenix
-#   OUT_DIR     directory to hold output file from this script; defaults to ${BASE}/running_jobs/${FULLSM}
+#   OUT_DIR     directory to hold output file from this script; defaults to ${BASE}/variant_calling/running_jobs/${FULLSM}
 #   SHELLDROP   Drop to shell instead of running anything (used with docker)
 #   TIMING      Do /usr/bin/time -v timing of steps
 
@@ -78,7 +78,7 @@ done
 
 if [ ! -z "${TIMING}" ]; then TIMING=(/usr/bin/time -v); fi
 
-if [ -z "${OUT_DIR}" ]; then OUT_DIR="${BASE}/running_jobs/${FULLSM}"; fi
+if [ -z "${OUT_DIR}" ]; then OUT_DIR="${BASE}/variant_calling/running_jobs/${FULLSM}"; fi
 mkdir -p "${OUT_DIR}" || { echo "Error, cannot create ${OUT_DIR}"; quit "Setup OUT_DIR"; }
 
 # Create a directory to contain all of the files generated while running the script
