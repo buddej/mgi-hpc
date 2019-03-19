@@ -11,6 +11,7 @@ VERSION="0.1.0"
 
 # Optional parameters
 #   SHELLDROP   Drop to shell instead of running anything (used with docker)
+#   MEM         Memory Limit in GB (e.g. 32)
 #   TIMING      Do /usr/bin/time -v timing of steps
 
 DATE="/bin/date +%s"
@@ -41,6 +42,8 @@ trap "echo \"[$(display_date $(${DATE}))] Terminated by SIGTERM \" && sleep 10s"
 # Option for usage in docker
 if [ "${SHELLDROP:=0}" -eq 1 ]; then echo "Dropping to shell"; exec "/bin/bash"; fi
 
+if [ -z "${MEM}" ]; then echo "WARNING, memory limit (in GB) not provided in variable \${MEM}; defaulting to 4G"; MEM=4; fi
+
 if [ -z "${BAMFILE}" ]; then
     echo "ERROR, must provide .sam or .bam file in variable \${BAMFILE}"
     quit "Input File"
@@ -61,7 +64,7 @@ if [ ! -z "${TIMING}" ]; then TIMING=(/usr/bin/time -v); fi
 # Just in case of symlinks, which cause problems for some programs
 REF="$(readlink -f "${BASE}/Genome_Ref/GRCh37/bwa_index/human_g1k_v37_decoy.fasta")"
 
-JAVAOPTS="-Xms2g -Xmx4g -XX:+UseSerialGC -Dpicard.useLegacyParser=false"
+JAVAOPTS="-Xms2g -Xmx${MEM}g -XX:+UseSerialGC -Dpicard.useLegacyParser=false"
 
 # ValidateSamFile
 start=$(${DATE}); echo "[$(display_date ${start})] ValidateSamFile starting"

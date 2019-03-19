@@ -7,7 +7,6 @@ VERSION="0.1.0"
 
 # Required parameters (must provide or container will quit)
 #   BASE        location of parent directories for input_files, running_jobs
-#   MEM         Memory Limit in GB (e.g. 32)
 #   FULLSM      FULLSM (SM^DNA^PR 3-part ID) for the individual whose .bam need to be marked / merged
 #   RUN_TYPE    required for now, may be dropped in the future
 #   $@          full paths to .bam files to mark / merge (command-line parameter), at least 1 required
@@ -15,6 +14,7 @@ VERSION="0.1.0"
 # Optional parameters
 #   WORKDIR     parent directory to create JOB_TMP directory to hold all files. Often uses ${PBS_JOBID} or ${SLURM_JOBID} or ${LSB_JOBID}. Required on fenix
 #   OUT_DIR     directory to hold output file from this script; defaults to ${BASE}/variant_calling/running_jobs/${FULLSM}
+#   MEM         Memory Limit in GB (e.g. 32), defaults to 4
 #   SHELLDROP   Drop to shell instead of running anything (used with docker)
 #   TIMING      Do /usr/bin/time -v timing of steps
 
