@@ -64,6 +64,7 @@ if [ "${RUN_TYPE}" = "genome" ]; then
 else
     # INPUT: _sorted.bam; OUTPUT: _${RUN_TYPE}_sorted.bam
     start=$(${DATE}); echo "[$(display_date ${start})] intersectBed starting"
+    CUR_STEP="intersectBed"
     if [ "${RUN_TYPE}" = "exome" ]; then
       BEDFILE="${COVERED_BED}"
     elif [ "${RUN_TYPE}" = "paddedexome" ]; then

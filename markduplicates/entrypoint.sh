@@ -60,7 +60,7 @@ echo "Running on system ${SYSTEM:=UNDEFINED}, BASE set to ${BASE}"
 if [ -z "${WORKDIR}" ]; then 
   if [ "${SYSTEM}" = "MGI" ]; then
     WORKDIR="${BASE}/tmp/${LSB_JOBID}.tmpdir"
-    mkdir -p "${WORKDIR}" || { echo "Error, cannot create ${OUT_DIR}"; quit "Setup WORKDIR"; }
+    mkdir -p "${WORKDIR}" || { echo "Error, cannot create ${WORKDIR}"; quit "Setup WORKDIR"; }
   else 
     echo "Error, WORKDIR not specified, refusing to guess an appropriate location on this unknown filesystem"
     quit "Job Config"
@@ -89,6 +89,7 @@ JAVAOPTS="-Xms2g -Xmx${MEM}g -XX:+UseSerialGC -Dpicard.useLegacyParser=false"
 
 # MarkDuplicates
 start=$(${DATE}); echo "[$(display_date ${start})] MarkDuplicates starting"
+CUR_STEP="MarkDuplicates"
 # Would be better to create -O name from consensus commonalities in INPUT_BAM_LIST
 "${TIMING[@]}" java ${JAVAOPTS} -jar "${PICARD}" \
   MarkDuplicates \

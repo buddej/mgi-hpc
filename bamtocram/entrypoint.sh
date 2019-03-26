@@ -93,6 +93,7 @@ fi
 
 # Convert bam to cram
 start=$(${DATE}); echo "[$(display_date ${start})] bamtocram starting"
+CUR_STEP="bamtocram"
 # Output is staged in ${JOB_TMP} and moved to ${OUT_DIR} only once complete (to complement with other automation workflows)
 mv -vi "${BAMFILE}" "${JOB_TMP}" \
   && "${TIMING[@]}" samtools view -T "${REF}" -C -o "${JOB_TMP}/${CRAMFILENAME}" "${JOB_TMP}/${BAMFILENAME}"

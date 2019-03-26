@@ -68,6 +68,7 @@ JAVAOPTS="-Xms2g -Xmx${MEM}g -XX:+UseSerialGC -Dpicard.useLegacyParser=false"
 
 # ValidateSamFile
 start=$(${DATE}); echo "[$(display_date ${start})] ValidateSamFile starting"
+CUR_STEP="ValidateSam"
 "${TIMING[@]}" /usr/bin/java ${JAVAOPTS} -jar "${PICARD}" ValidateSamFile -R "${REF}" -I "${BAMFILE}" "$@"
 exitcode=$?
 end=$(${DATE}); echo "[$(display_date ${end})] ValidateSamFile finished, exit code: ${exitcode}, step time $(date_diff ${start} ${end})"

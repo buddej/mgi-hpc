@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION="0.1.3"
+VERSION="0.1.4"
 # Entrypoint script for docker container buddej/bwa:${VERSION}
 
 GC_THREADS=2  # benchmarking found this to be the fastest for most jobs, vs. 4 or 8
@@ -105,7 +105,7 @@ while getopts ":1:2:f:b:s:n:w:r:t:cgpei" opt; do
       RUN_TYPE="exome"
       ;;
     i)
-      FASTQ_TYPE="noninterleaved"
+      FASTQ_TYPE="interleaved"
       ;;
     \?)
       echo "Invalid option: -$OPTARG"
@@ -288,7 +288,7 @@ if [ "${MODE}" = "bam" ] || [ "${MODE}" = "2xfq" ] || [ "${MODE}" = "fq" ]; then
            | eval "${SAMTOOLS_CMD[@]}"
        elif [ "${MODE}" = "fq" ]; then
          # Support for single-ended reads or interleaved reads in a single .fq file
-         if [ "${FASTQ_TYPE}" = "noninterleaved" ]; then INTERLEAVE_OPTION="-p"; else INTERLEAVE_OPTION=""; fi
+         if [ "${FASTQ_TYPE}" = "interleaved" ]; then INTERLEAVE_OPTION="-p"; else INTERLEAVE_OPTION=""; fi
          "${TIMING[@]}" bwa mem -t ${THREADS} -R "${RG}" -M "${INTERLEAVE_OPTION}" "${REF}" "${FQ}" \
            | eval "${SAMTOOLS_CMD[@]}"
        else  # This should never be triggered with the current script
