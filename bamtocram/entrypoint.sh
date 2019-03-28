@@ -59,14 +59,16 @@ fi
 # Maybe consider dropping this requirement and skipping NM validation
 if [ -z "${BASE}" ]; then echo "Error, BASE not specified"; quit "Job Config"; fi
 echo "Running on system ${SYSTEM:=UNDEFINED}, BASE set to ${BASE}"
+
 if [ -z "${WORKDIR}" ]; then 
   if [ "${SYSTEM}" = "MGI" ]; then
-    WORKDIR="${BASE}/tmp/${LSB_JOBID}.tmpdir"
-  else 
+    WORKDIR="${BASE}/tmp/"
+  else
     echo "Error, WORKDIR not specified, refusing to guess an appropriate location on this unknown filesystem"
     quit "Job Config"
   fi
 fi
+mkdir -p "${WORKDIR}" || { echo "Error, cannot create ${WORKDIR}"; quit "Setup WORKDIR"; }
 
 # Create a directory to contain all of the files generated while running the script
 JOB_TMP="$(mktemp -d -p "${WORKDIR}/" "${LSB_JOBID:-0}.XXXXXXXXXXXXXXXX")" \

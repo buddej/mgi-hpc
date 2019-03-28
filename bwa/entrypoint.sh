@@ -131,14 +131,12 @@ echo "Running on system ${SYSTEM:=UNDEFINED}, BASE set to ${BASE}"
 if [ -z "${WORKDIR}" ]; then
   if [ "${SYSTEM}" = "MGI" ]; then
     WORKDIR="${BASE}/tmp/"
-    mkdir -p "${WORKDIR}" || { echo "Error, cannot create ${WORKDIR}"; quit "Setup WORKDIR"; }
   else
     echo "Error, WORKDIR not specified, refusing to guess an appropriate location on this unknown filesystem"
     quit "Job Config"
   fi
-else
-  mkdir -p "${WORKDIR}" || || { echo "Error, cannot create ${WORKDIR}"; quit "Setup WORKDIR"; }
 fi
+mkdir -p "${WORKDIR}" || || { echo "Error, cannot create ${WORKDIR}"; quit "Setup WORKDIR"; }
 
 if [[ -n "${BAMFILE}" && (-n "${FQ}" || -n "${FQ1}" || -n "${FQ2}") ]]; then
   echo "Error, BAMFILE and FASTQ files specified as input, this is usually an error with ENV variables"
