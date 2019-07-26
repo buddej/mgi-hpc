@@ -136,7 +136,7 @@ if [ -z "${WORKDIR}" ]; then
     quit "Job Config"
   fi
 fi
-mkdir -p "${WORKDIR}" || || { echo "Error, cannot create ${WORKDIR}"; quit "Setup WORKDIR"; }
+mkdir -p "${WORKDIR}" || { echo "Error, cannot create ${WORKDIR}"; quit "Setup WORKDIR"; }
 
 if [[ -n "${BAMFILE}" && (-n "${FQ}" || -n "${FQ1}" || -n "${FQ2}") ]]; then
   echo "Error, BAMFILE and FASTQ files specified as input, this is usually an error with ENV variables"
