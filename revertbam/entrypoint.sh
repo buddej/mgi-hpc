@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION="0.1.0"
+VERSION="0.1.2"
 # Entrypoint script for docker container buddej/revertbam:${VERSION}
 
 # Parameters must be defined so the script knows which file(s) to process

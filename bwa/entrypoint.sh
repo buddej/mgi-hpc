@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION="0.1.4"
+VERSION="0.1.5"
 # Entrypoint script for docker container buddej/bwa:${VERSION}
 
 GC_THREADS=2  # benchmarking found this to be the fastest for most jobs, vs. 4 or 8
