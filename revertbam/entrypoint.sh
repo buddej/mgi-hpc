@@ -109,6 +109,7 @@ if [ ! -z "${CREATE_RGFILE}" ]; then
   PR="$(echo "${FULLSM}" | cut -d^ -f3)"
   IFS=$'\n' RGS=($(samtools view -H "${BAMFILE}" | grep "^@RG"))
   echo "Creating ${#RGS[@]} .rgfiles for newly created .fastq files" 
+  echo "Moving ${#RGS[@]} .fastq files to ${OUT_DIR}/"
   for RG in ${RGS[@]}; do
     RGID="$(echo ${RG} | grep -oP "(?<=ID:)[^[:space:]]*")"
     RGID_NEW="$(echo ${RGID} | cut -d: -f2- | sed 's/:/^/g')"

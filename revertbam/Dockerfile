@@ -20,6 +20,7 @@ RUN apt-get update -y \
        libbz2-dev \
        liblzma-dev \
        ncurses-dev \
+       bc \
        libnss-sss \
        time \
   && cd /tmp \
