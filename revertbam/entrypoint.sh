@@ -16,6 +16,7 @@ VERSION="0.1.2"
 #   MEM           Memory Limit in GB (e.g. 32)
 #   TIMING        Do /usr/bin/time -v timing of steps
 #   CREATE_RGFILE Create .rgfile for each .fastq after reverting
+#   REMOVE_INPUT  Delete the input .bam upon successful completion
 
 DATE="/bin/date +%s"
 display_date () {
@@ -58,6 +59,9 @@ if [ ! -r "${BAMFILE}" ]; then
     quit "Input File"
 fi
 
+# Remove files as you go. Set to 0 for testing. Only set if CLEANUP has not already been declared at the command line.
+if [ -z "${REMOVE_INPUT}" ]; then REMOVE_INPUT=0; fi
+
 if [ -z "${OUT_DIR}" ]; then OUT_DIR="${BASE}/variant_calling/input_files/${FULLSM}"; fi
 mkdir -p "${OUT_DIR}" || { echo "Error, cannot create ${OUT_DIR}"; quit "Setup OUT_DIR"; }
 
@@ -92,8 +96,11 @@ end=$(${DATE}); echo "[$(display_date ${end})] ${CUR_STEP} finished, exit code: 
 BAMLINES=$(samtools idxstats "${BAMFILE}" | awk '{s+=$3+$4} END {print s*4}')
 FQLINES=$(cat ${OUT_DIR}/*.fastq | wc -l)
 if [ ! -z ${DEBUG} ]; then
-  echo "${BAMFILES} lines in .bam"
+  echo "${BAMLINES} lines in .bam"
   echo "${FQLINES} lines in all .fastq files"
+  if [ $(echo "scale=2;${FQLINES}/${BAMLINES} > 0.90" | bc) -eq 0 ]; then
+    echo "Warning, .fastq files contain less than 90% of the number of reads of .bam file"
+  fi
 fi
 
 if [ ! -z "${CREATE_RGFILE}" ]; then
@@ -113,7 +120,10 @@ if [ ! -z "${CREATE_RGFILE}" ]; then
   done
 fi
 
-# Leaving BAMFILE for now, but will add validation to check counts of reads
+if [ ${exitcode} -eq 0 ] && [ ${REMOVE_INPUT} -eq 1 ]; then
+  rm -fv "${BAMFILE}"
+fi
+
 # Need to add CLEANUP variable as well
 
 exit ${exitcode}
