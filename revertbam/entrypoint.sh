@@ -1,18 +1,21 @@
 #!/bin/bash
 
 VERSION="0.1.0"
-# Entrypoint script for docker container buddej/validatesam:${VERSION}
+# Entrypoint script for docker container buddej/revertbam:${VERSION}
 
 # Parameters must be defined so the script knows which file(s) to process
 
 # Required parameters (must provide or container will quit)
 #   BASE       location of reference files (needed for picard NM validation)
-#   BAMFILE    .sam or .bam input file to validate
+#   BAMFILE    .sam or .bam input file to revert
+#   FULLSM     FULLSM (SM^DNA^PR 3-part ID) for the individual whose .bam need to be reverted (needed for naming)
 
 # Optional parameters
-#   SHELLDROP   Drop to shell instead of running anything (used with docker)
-#   MEM         Memory Limit in GB (e.g. 32)
-#   TIMING      Do /usr/bin/time -v timing of steps
+#   OUT_DIR       Directory to place reverted .fastq files; defaults to ${BASE}/variant_calling/input_files/${FULLSM}
+#   SHELLDROP     Drop to shell instead of running anything (used with docker)
+#   MEM           Memory Limit in GB (e.g. 32)
+#   TIMING        Do /usr/bin/time -v timing of steps
+#   CREATE_RGFILE Create .rgfile for each .fastq after reverting
 
 DATE="/bin/date +%s"
 display_date () {
@@ -42,6 +45,7 @@ trap "echo \"[$(display_date $(${DATE}))] Terminated by SIGTERM \" && sleep 10s"
 # Option for usage in docker
 if [ "${SHELLDROP:=0}" -eq 1 ]; then echo "Dropping to shell"; exec "/bin/bash"; fi
 
+if [ -z "${FULLSM}" ]; then echo "ERROR, must provide 3-part ID in variable \${FULLSM}"; quit "Job Config"; fi
 if [ -z "${MEM}" ]; then echo "WARNING, memory limit (in GB) not provided in variable \${MEM}; defaulting to 4G"; MEM=4; fi
 
 if [ -z "${BAMFILE}" ]; then
@@ -54,6 +58,9 @@ if [ ! -r "${BAMFILE}" ]; then
     quit "Input File"
 fi
 
+if [ -z "${OUT_DIR}" ]; then OUT_DIR="${BASE}/variant_calling/input_files/${FULLSM}"; fi
+mkdir -p "${OUT_DIR}" || { echo "Error, cannot create ${OUT_DIR}"; quit "Setup OUT_DIR"; }
+
 # Set locations based on ${BASE}, which is set via env variable
 # Maybe consider dropping this requirement and skipping NM validation
 if [ -z "${BASE}" ]; then echo "Error, BASE not specified"; quit "Job Config"; fi
@@ -61,16 +68,52 @@ echo "Running on system ${SYSTEM:=UNDEFINED}, BASE set to ${BASE}"
 
 if [ ! -z "${TIMING}" ]; then TIMING=(/usr/bin/time -v); fi
 
-# Just in case of symlinks, which cause problems for some programs
-REF="$(readlink -f "${BASE}/Genome_Ref/GRCh37/bwa_index/human_g1k_v37_decoy.fasta")"
-
 JAVAOPTS="-Xms2g -Xmx${MEM}g -XX:+UseSerialGC -Dpicard.useLegacyParser=false"
 
-# ValidateSamFile
-start=$(${DATE}); echo "[$(display_date ${start})] ValidateSamFile starting"
-CUR_STEP="ValidateSam"
-"${TIMING[@]}" /usr/bin/java ${JAVAOPTS} -jar "${PICARD}" ValidateSamFile -R "${REF}" -I "${BAMFILE}" "$@"
+# RevertSam
+CUR_STEP="RevertSam"
+start=$(${DATE}); echo "[$(display_date ${start})] ${CUR_STEP} starting"
+"${TIMING[@]}" /usr/bin/java ${JAVAOPTS} -jar "${PICARD}" \
+  "${CUR_STEP}" \
+  -I "${BAMFILE}" \
+  -O /dev/stdout \
+  -SORT_ORDER queryname \
+  -COMPRESSION_LEVEL 0 \
+  -VALIDATION_STRINGENCY SILENT \
+  | /usr/bin/java ${JAVAOPTS} -jar "${PICARD}" \
+      SamToFastq \
+      -I /dev/stdin \
+      -OUTPUT_PER_RG true \
+      -OUTPUT_DIR "${OUT_DIR}" \
+      -VALIDATION_STRINGENCY SILENT
 exitcode=$?
-end=$(${DATE}); echo "[$(display_date ${end})] ValidateSamFile finished, exit code: ${exitcode}, step time $(date_diff ${start} ${end})"
+end=$(${DATE}); echo "[$(display_date ${end})] ${CUR_STEP} finished, exit code: ${exitcode}, step time $(date_diff ${start} ${end})"
+
+BAMLINES=$(samtools idxstats "${BAMFILE}" | awk '{s+=$3+$4} END {print s*4}')
+FQLINES=$(cat ${OUT_DIR}/*.fastq | wc -l)
+if [ ! -z ${DEBUG} ]; then
+  echo "${BAMFILES} lines in .bam"
+  echo "${FQLINES} lines in all .fastq files"
+fi
+
+if [ ! -z "${CREATE_RGFILE}" ]; then
+  SM="$(echo "${FULLSM}" | cut -d^ -f1)"
+  DNA="$(echo "${FULLSM}" | cut -d^ -f2)"
+  PR="$(echo "${FULLSM}" | cut -d^ -f3)"
+  IFS=$'\n' RGS=($(samtools view -H "${BAMFILE}" | grep "^@RG"))
+  echo "Creating ${#RGS[@]} .rgfiles for newly created .fastq files" 
+  for RG in ${RGS[@]}; do
+    RGID="$(echo ${RG} | grep -oP "(?<=ID:)[^[:space:]]*")"
+    RGID_NEW="$(echo ${RGID} | cut -d: -f2- | sed 's/:/^/g')"
+    mv -vf "${OUT_DIR}/${RGID//:/_}_1.fastq" "${OUT_DIR}/${FULLSM}.${RGID_NEW}.r1.fastq"
+    if [ -f "${ID//:/_}_2.fastq" ]; then mv -vf "${OUT_DIR}/${RGID//:/_}_2.fastq" "${OUT_DIR}/${FULLSM}.${RGID_NEW}.r2.fastq"; fi
+    RGPU="$(echo ${RG} | grep -oP "(?<=PU:)[^[:space:]]*")"
+    RGLB="${SM}.${PR}"
+    echo "@RG\tID:${RGID}\tPL:illumina\tPU:${RGPU}\tLB:${RGLB}\tSM:${SM}\tDS:${SM}^${DNA}^${PR}" > "${OUT_DIR}/${FULLSM}.${RGID_NEW}.rgfile"
+  done
+fi
+
+# Leaving BAMFILE for now, but will add validation to check counts of reads
+# Need to add CLEANUP variable as well
 
 exit ${exitcode}

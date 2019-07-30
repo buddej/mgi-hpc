@@ -167,7 +167,7 @@ elif [ -n "${FQ1}" ] && [ -n "${FQ2}" ]; then  # If starting with 2 .fq files
   # DEBUG -- this may cause a problem if we ever receive large .fq.bz2 files, but for WES it is okay to uncompress
   if [[ ${FQ1} =~ bz2$ ]]; then echo "Decompressing .fq.bz2 file"; if bunzip2 "${FQ1}"; then FQ1="${FQ1%.bz2}"; else quit "Decompressing Input File"; fi; fi
   if [[ ${FQ2} =~ bz2$ ]]; then echo "Decompressing .fq.bz2 file"; if bunzip2 "${FQ2}"; then FQ2="${FQ2%.bz2}"; else quit "Decompressing Input File"; fi; fi
-elif [ -n "${FQ}" ]; then  # If starting with 1 interleaved .fq file
+elif [ -n "${FQ}" ]; then  # If starting with 1 interleaved .fq file (or single-ended data)
   MODE="fq"
   if [ ! -r "${FQ}" ]; then echo "Error, input file ${FQ} does not exist or cannot be read"; quit "Reading Input File"; fi
   INDIR="${FQ%/*}"  # Extract filename from full FQ path
@@ -286,8 +286,8 @@ if [ "${MODE}" = "bam" ] || [ "${MODE}" = "2xfq" ] || [ "${MODE}" = "fq" ]; then
            | eval "${SAMTOOLS_CMD[@]}"
        elif [ "${MODE}" = "fq" ]; then
          # Support for single-ended reads or interleaved reads in a single .fq file
-         if [ "${FASTQ_TYPE}" = "interleaved" ]; then INTERLEAVE_OPTION="-p"; else INTERLEAVE_OPTION=""; fi
-         "${TIMING[@]}" bwa mem -t ${THREADS} -R "${RG}" -M "${INTERLEAVE_OPTION}" "${REF}" "${FQ}" \
+         if [ "${FASTQ_TYPE}" = "interleaved" ]; then INTERLEAVE_OPTION="-p"; else unset INTERLEAVE_OPTION; fi
+         "${TIMING[@]}" bwa mem -t ${THREADS} -R "${RG}" -M ${INTERLEAVE_OPTION} "${REF}" "${FQ}" \
            | eval "${SAMTOOLS_CMD[@]}"
        else  # This should never be triggered with the current script
          echo "ERROR, how did you get here?"
