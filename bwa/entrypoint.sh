@@ -26,6 +26,7 @@ if [ -z "${BWA_PIPE_SORT}" ]; then BWA_PIPE_SORT=1; fi  # Assuming pipe directly
 #   FULLSM_RGID   sample ID_RGID, used for determining output filenames. Will be set to FULLSM if not supplied
 #   CLEANUP       set to 0 (don't cleanup) or 1 (do cleanup) to remove temporary files as the script runs
 #   THREADS       by default set to 4 on ewok, 8 on CHPC
+#   MEM           Memory Limit in GB (e.g. 32), defaults to 4
 #   SHELLDROP     Drop to shell instead of running anything (used with docker)
 #   REMOVE_INPUT  Delete the input .bam upon successful completion
 
@@ -204,13 +205,15 @@ SORT_TMP="$(mktemp -d -p "${JOB_TMP}")" \
 # Just in case of symlinks, which bwa doesn't seem to be able to handle
 REF="$(readlink -f "${BASE}/Genome_Ref/GRCh37/bwa_index/human_g1k_v37_decoy.fasta")"
 
+if [ -z "${MEM}" ]; then echo "WARNING, memory limit (in GB) not provided in variable \${MEM}; defaulting to 4G"; MEM=4; fi
+
 # Setup java Garbage Collection, depending on the number of threads
 if [ "${THREADS:=1}" -eq 1 ]; then
-  JAVAOPTS="-Xms4g -Xmx32g -XX:+UseSerialGC"
+  JAVAOPTS="-Xms2g -Xmx${MEM}g -XX:+UseSerialGC"
 else
-  JAVAOPTS="-Xms4g -Xmx32g -XX:+UseParallelGC -XX:ParallelGCThreads=${GC_THREADS}"
+  JAVAOPTS="-Xms2g -Xmx${MEM}g -XX:+UseParallelGC -XX:ParallelGCThreads=${GC_THREADS}"
 fi
-MEM=$((32/${THREADS}))
+MEM_SPLIT=$((${MEM}/${THREADS}))
 
 if [ -z "${FULLSM_RGID}" ]; then
   FULLSM_RGID="${FULLSM}"  # Workaround for now. In the future figure out how many RGs a sample has
@@ -268,10 +271,10 @@ if [ "${MODE}" = "bam" ] || [ "${MODE}" = "2xfq" ] || [ "${MODE}" = "fq" ]; then
        echo "[$(display_date $(${DATE}))] Loading ReadGroup info from ${RGFILE}"
        RG=$(<${RGFILE})
        if [ ${BWA_PIPE_SORT} -eq 1 ]; then
-         SAMTOOLS_CMD=(samtools sort -@ "${THREADS}" -m "${MEM}G" -o "${OUT_DIR}/${FULLSM_RGID}.aln.srt.bam" -T "${SORT_TMP}/")
+         SAMTOOLS_CMD=(samtools sort -@ "${THREADS}" -m "${MEM_SPLIT}G" -o "${OUT_DIR}/${FULLSM_RGID}.aln.srt.bam" -T "${SORT_TMP}/")
        else
          SAMTOOLS_CMD=(samtools view -b -1 -o "${JOB_TMP}/${FULLSM_RGID}.aln.bam")
-         SAMTOOLS_CMD+=(\&\& samtools sort -@ "${THREADS}" -m "${MEM}G" -o "${OUT_DIR}/${FULLSM_RGID}.aln.srt.bam" -T "${SORT_TMP}/" "${JOB_TMP}/${FULLSM_RGID}.aln.bam")
+         SAMTOOLS_CMD+=(\&\& samtools sort -@ "${THREADS}" -m "${MEM_SPLIT}G" -o "${OUT_DIR}/${FULLSM_RGID}.aln.srt.bam" -T "${SORT_TMP}/" "${JOB_TMP}/${FULLSM_RGID}.aln.bam")
          SAMTOOLS_CMD+=(\&\& rm -fv "${JOB_TMP}/${FULLSM_RGID}.aln.bam")
        fi
        if [ ! -z "${TIMING}" ]; then TIMING=(/usr/bin/time -v); SAMTOOLS_CMD=("${TIMING[@]}" "${SAMTOOLS_CMD[@]}"); fi
@@ -319,7 +322,7 @@ if [ "${MODE}" = "bam" ] || [ "${MODE}" = "2xfq" ] || [ "${MODE}" = "fq" ]; then
         if [ -d "${SORT_TMP}" ]; then rm -rfv "${SORT_TMP}"; fi
         if [ -d "${JOB_TMP}" ]; then rmdir -v "${JOB_TMP}"; fi
         if [ "${MODE}" = "bam" ] || [ "${SYSTEM}" = "CHPC2" ]; then rm -fv "${BAMFILE}"; fi
-        if { [ "${MODE}" = "2xfq" ] || [ "${MODE}" = "fq" ]; } && { [ "${SYSTEM}" = "CHPC2" ] || [ "${SYSTEM}" = "FSL" ] || [ "${SYSTEM}" = "MGI"]; }; then
+        if { [ "${MODE}" = "2xfq" ] || [ "${MODE}" = "fq" ]; } && { [ "${SYSTEM}" = "CHPC2" ] || [ "${SYSTEM}" = "FSL" ] || [ "${SYSTEM}" = "MGI" ]; }; then
           if [ ${CACHING} -eq 1 ]; then
             rm -fv "${OLD_FQ}" "${OLD_FQ1}" "${OLD_FQ2}" 2>/dev/null
           else

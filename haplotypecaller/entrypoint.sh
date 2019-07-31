@@ -104,7 +104,7 @@ exitcode=$?
 end=$(${DATE}); echo "[$(display_date ${end})] ${CUR_STEP} finished, exit code: ${exitcode}, step time $(date_diff ${start} ${end})"
 
 if [ "${SYSTEM}" = "MGI" ]; then
-  mv -vf "${BAMFILE}" "${BASE}/tmp/" \
+  mv -vf "${BAMFILE}" "${BASE}/tmp/"
 fi
 
 exit ${exitcode}
