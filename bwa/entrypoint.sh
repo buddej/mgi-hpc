@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION="0.1.5"
+VERSION="0.1.6"
 # Entrypoint script for docker container buddej/bwa:${VERSION}
 
 GC_THREADS=2  # benchmarking found this to be the fastest for most jobs, vs. 4 or 8
@@ -20,13 +20,14 @@ if [ -z "${BWA_PIPE_SORT}" ]; then BWA_PIPE_SORT=1; fi  # Assuming pipe directly
 #   RGFILE      required if providing FQ1+FQ2 or FQ
 
 # Optional parameters
-#   WORKDIR     parent directory to create JOB_TMP directory to hold all files (which often uses ${PBS_JOBID} or ${SLURM_JOBID} or ${LSB_JOBID}). Required on fenix
-#   OUT_DIR     directory to hold output file from this script; defaults to ${INDIR}
-#   FULLSM      sample ID, used for determining output filenames. Will be auto-detected from BAMFILE or FQ1 if not supplied
-#   FULLSM_RGID sample ID_RGID, used for determining output filenames. Will be set to FULLSM if not supplied
-#   CLEANUP     set to 0 (don't cleanup) or 1 (do cleanup) to remove temporary files as the script runs
-#   THREADS     by default set to 4 on ewok, 8 on CHPC
-#   SHELLDROP   Drop to shell instead of running anything (used with docker)
+#   WORKDIR       parent directory to create JOB_TMP directory to hold all files (which often uses ${PBS_JOBID} or ${SLURM_JOBID} or ${LSB_JOBID}). Required on fenix
+#   OUT_DIR       directory to hold output file from this script; defaults to ${INDIR}
+#   FULLSM        sample ID, used for determining output filenames. Will be auto-detected from BAMFILE or FQ1 if not supplied
+#   FULLSM_RGID   sample ID_RGID, used for determining output filenames. Will be set to FULLSM if not supplied
+#   CLEANUP       set to 0 (don't cleanup) or 1 (do cleanup) to remove temporary files as the script runs
+#   THREADS       by default set to 4 on ewok, 8 on CHPC
+#   SHELLDROP     Drop to shell instead of running anything (used with docker)
+#   REMOVE_INPUT  Delete the input .bam upon successful completion
 
 DATE="/bin/date +%s"
 display_date () {
@@ -187,6 +188,9 @@ else
   exit 1
 fi
 
+# Remove files as you go. Set to 0 for testing. Only set if CLEANUP has not already been declared at the command line.
+if [ -z "${REMOVE_INPUT}" ]; then REMOVE_INPUT=0; fi
+
 if [ -z "${OUT_DIR}" ]; then OUT_DIR="${INDIR}"; fi
 mkdir -p "${OUT_DIR}" || { echo "Error, cannot create ${OUT_DIR}"; quit "Setup OUT_DIR"; }
 
@@ -315,12 +319,14 @@ if [ "${MODE}" = "bam" ] || [ "${MODE}" = "2xfq" ] || [ "${MODE}" = "fq" ]; then
         if [ -d "${SORT_TMP}" ]; then rm -rfv "${SORT_TMP}"; fi
         if [ -d "${JOB_TMP}" ]; then rmdir -v "${JOB_TMP}"; fi
         if [ "${MODE}" = "bam" ] || [ "${SYSTEM}" = "CHPC2" ]; then rm -fv "${BAMFILE}"; fi
-        if { [ "${MODE}" = "2xfq" ] || [ "${MODE}" = "fq" ]; } && { [ "${SYSTEM}" = "CHPC2" ] || [ "${SYSTEM}" = "FSL" ]; }; then
+        if { [ "${MODE}" = "2xfq" ] || [ "${MODE}" = "fq" ]; } && { [ "${SYSTEM}" = "CHPC2" ] || [ "${SYSTEM}" = "FSL" ] || [ "${SYSTEM}" = "MGI"]; }; then
           if [ ${CACHING} -eq 1 ]; then
             rm -fv "${OLD_FQ}" "${OLD_FQ1}" "${OLD_FQ2}" 2>/dev/null
           else
             echo rm -fv "${FQ}" "${FQ1}" "${FQ2}"
-#            rm -fv "${FQ}" "${FQ1}" "${FQ2}" 2>/dev/null
+            if [ ${REMOVE_INPUT} -eq 1 ]; then
+              rm -fv "${FQ}" "${FQ1}" "${FQ2}" 2>/dev/null
+            fi
           fi
         fi
         # Would normally CLEANUP AND DELETE ${FQ} and ${RGFILE}
