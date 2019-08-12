@@ -109,8 +109,8 @@ exitcode=$?
 end=$(${DATE}); echo "[$(display_date ${end})] ${CUR_STEP} finished, exit code: ${exitcode}, step time $(date_diff ${start} ${end})"
 
 if [ "${SYSTEM}" = "MGI" ]; then
-  mkdir -p "${BASE}/completed_jobs/" \
-    && mv -vi "${GVCF%/*}" "${BASE}/completed_jobs/"
+  mkdir -p "${BASE}/variant_calling/completed_jobs/" \
+    && mv -vi "${GVCF%/*}" "${BASE}/variant_calling/completed_jobs/"
 fi
 
 exit ${exitcode}
