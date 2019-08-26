@@ -115,7 +115,7 @@ if [ ! -z "${CREATE_RGFILE}" ]; then
     RGID="$(echo ${RG} | grep -oP "(?<=ID:)[^[:space:]]*")"
     RGID_NEW="$(echo ${RGID} | cut -d: -f2- | sed 's/:/^/g')"
     mv -vf "${OUT_DIR}/${RGID//:/_}_1.fastq" "${OUT_DIR}/${FULLSM}.${RGID_NEW}.r1.fastq"
-    if [ -f "${ID//:/_}_2.fastq" ]; then mv -vf "${OUT_DIR}/${RGID//:/_}_2.fastq" "${OUT_DIR}/${FULLSM}.${RGID_NEW}.r2.fastq"; fi
+    if [ -f "${OUT_DIR}/${ID//:/_}_2.fastq" ]; then mv -vf "${OUT_DIR}/${RGID//:/_}_2.fastq" "${OUT_DIR}/${FULLSM}.${RGID_NEW}.r2.fastq"; fi
     RGPU="$(echo ${RG} | grep -oP "(?<=PU:)[^[:space:]]*")"
     RGLB="${SM}.${PR}"
     echo "@RG\tID:${RGID}\tPL:illumina\tPU:${RGPU}\tLB:${RGLB}\tSM:${SM}\tDS:${SM}^${DNA}^${PR}" > "${OUT_DIR}/${FULLSM}.${RGID_NEW}.rgfile"
