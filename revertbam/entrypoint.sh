@@ -88,6 +88,7 @@ start=$(${DATE}); echo "[$(display_date ${start})] ${CUR_STEP} starting"
       SamToFastq \
       -I /dev/stdin \
       -OUTPUT_PER_RG true \
+      -RG_TAG ID \
       -OUTPUT_DIR "${OUT_DIR}" \
       -VALIDATION_STRINGENCY SILENT
 exitcode=$?
