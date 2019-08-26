@@ -123,7 +123,7 @@ if [ ! -z "${CREATE_RGFILE}" ]; then
 fi
 
 if [ ${exitcode} -eq 0 ] && [ ${REMOVE_INPUT} -eq 1 ]; then
-  rm -fv "${BAMFILE}"
+  rm -fv "${BAMFILE}" "${BAMFILE%.bam}.bai" "${BAMFILE}.bai" 2>/dev/null
 fi
 
 # Need to add CLEANUP variable as well
