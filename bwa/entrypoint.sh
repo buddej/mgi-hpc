@@ -51,7 +51,7 @@ quit () {
   echo "[$(display_date $(${DATE}))] Run failed at ${1} step, exit code: 1"
   echo "Leftover files may be in ${JOB_TMP}"
   echo "Cleaning up ${SORT_TMP}"
-  rm -rfv "${SORT_TMP}"
+  rm -rfv "${SORT_TMP:?}"
   if [ -d "${JOB_TMP}" ]; then rmdir -v "${JOB_TMP}"; fi  # this might fail if files are leftover, but is handy if the job fails early
   touch "${INDIR}/.${FULLSM_RGID}.runfailed"
   if [ ${CACHING} -eq 1 ]; then
@@ -223,7 +223,7 @@ fi
 run_start=$(${DATE})
 echo "[$(display_date $(${DATE}))] Starting run on ${SYSTEM}, host ${HOSTNAME}; Run Parameters:"
 touch "${INDIR}/.${FULLSM_RGID}.startrun"
-for i in VERSION SYSTEM SLURM_JOB_NODELIST SLURM_NTASKS REF FULLSM FULLSM_RGID INDIR BAMFILE FQ FQ1 FQ2 RGFILE WORKDIR JOB_TMP SORT_TMP OUT_DIR BWA_PIPE_SORT THREADS CLEANUP RUN_TYPE MODE FASTQ_TYPE CACHING; do
+for i in VERSION SYSTEM SLURM_JOB_NODELIST SLURM_NTASKS REF FULLSM FULLSM_RGID INDIR BAMFILE FQ FQ1 FQ2 RGFILE WORKDIR JOB_TMP SORT_TMP OUT_DIR BWA_PIPE_SORT THREADS CLEANUP RUN_TYPE MODE FASTQ_TYPE CACHING REMOVE_INPUT; do
   if [ ! -z ${!i} ]; then  # bash indirection: not the value of $i, but the value of the parameter name in $i
     printf "%26s ${!i}\n" "${i}"
   fi
@@ -319,8 +319,8 @@ if [ "${MODE}" = "bam" ] || [ "${MODE}" = "2xfq" ] || [ "${MODE}" = "fq" ]; then
       bwa_done=1;
       if [ ${CLEANUP} -eq 1 ]; then
         # Remove temporary directory created by SortSam
-        if [ -d "${JOB_TMP}/${FULLSM_RGID}/${USER}" ]; then rm -rfv "${JOB_TMP}/${FULLSM_RGID}/${USER}"; fi
-        if [ -d "${SORT_TMP}" ]; then rm -rfv "${SORT_TMP}"; fi
+        if [ -d "${JOB_TMP}/${FULLSM_RGID}/${USER}" ]; then rm -rfv "${JOB_TMP:?}/${FULLSM_RGID}/${USER}"; fi
+        if [ -d "${SORT_TMP}" ]; then rm -rfv "${SORT_TMP:?}"; fi
         if [ -d "${JOB_TMP}" ]; then rmdir -v "${JOB_TMP}"; fi
         if [ "${MODE}" = "bam" ] && { [ "${SYSTEM}" = "CHPC2" ] || [ "${SYSTEM}" = "FSL" ] || [ "${SYSTEM}" = "MGI" ]; } && [ ${REMOVE_INPUT} -eq 1 ]; then 
           echo "Removing input files ${BAMFILE}"
