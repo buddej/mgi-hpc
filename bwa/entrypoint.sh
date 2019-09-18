@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION="0.1.6"
+VERSION="0.1.7"
 # Entrypoint script for docker container buddej/bwa:${VERSION}
 
 GC_THREADS=2  # benchmarking found this to be the fastest for most jobs, vs. 4 or 8
@@ -24,11 +24,12 @@ if [ -z "${BWA_PIPE_SORT}" ]; then BWA_PIPE_SORT=1; fi  # Assuming pipe directly
 #   OUT_DIR       directory to hold output file from this script; defaults to ${INDIR}
 #   FULLSM        sample ID, used for determining output filenames. Will be auto-detected from BAMFILE or FQ1 if not supplied
 #   FULLSM_RGID   sample ID_RGID, used for determining output filenames. Will be set to FULLSM if not supplied
-#   CLEANUP       set to 0 (don't cleanup) or 1 (do cleanup) to remove temporary files as the script runs
-#   THREADS       by default set to 4 on ewok, 8 on CHPC
+#   THREADS       by default set to 4 on ewok, 8 on CHPC. Defaults to 8
 #   MEM           Memory Limit in GB (e.g. 32), defaults to 4
-#   SHELLDROP     Drop to shell instead of running anything (used with docker)
-#   REMOVE_INPUT  Delete the input .bam upon successful completion
+#   SHELLDROP     Drop to shell instead of running anything when set to 1 (used with docker). Defaults to 0
+#   CACHING       Cache reference and input files on local disk. Only used for CHPC old nodes. Deprecated
+#   CLEANUP       set to 0 (don't cleanup) or 1 (do cleanup) to remove temporary files as the script runs. Defaults to 1
+#   REMOVE_INPUT  Set to 0 (don't remove) or 1 (remove) to delete the input BAMFILE or input FQ FQ1 FQ2 upon successful completion. Defaults to 1
 
 DATE="/bin/date +%s"
 display_date () {
@@ -321,13 +322,17 @@ if [ "${MODE}" = "bam" ] || [ "${MODE}" = "2xfq" ] || [ "${MODE}" = "fq" ]; then
         if [ -d "${JOB_TMP}/${FULLSM_RGID}/${USER}" ]; then rm -rfv "${JOB_TMP}/${FULLSM_RGID}/${USER}"; fi
         if [ -d "${SORT_TMP}" ]; then rm -rfv "${SORT_TMP}"; fi
         if [ -d "${JOB_TMP}" ]; then rmdir -v "${JOB_TMP}"; fi
-        if [ "${MODE}" = "bam" ] || [ "${SYSTEM}" = "CHPC2" ]; then rm -fv "${BAMFILE}"; fi
+        if [ "${MODE}" = "bam" ] && { [ "${SYSTEM}" = "CHPC2" ] || [ "${SYSTEM}" = "FSL" ] || [ "${SYSTEM}" = "MGI" ]; } && [ ${REMOVE_INPUT} -eq 1 ]; then 
+          echo "Removing input files ${BAMFILE}"
+          rm -fv "${BAMFILE}"
+        fi
         if { [ "${MODE}" = "2xfq" ] || [ "${MODE}" = "fq" ]; } && { [ "${SYSTEM}" = "CHPC2" ] || [ "${SYSTEM}" = "FSL" ] || [ "${SYSTEM}" = "MGI" ]; }; then
           if [ ${CACHING} -eq 1 ]; then
+            # If CACHING was enabled, the FQ FQ1 FQ2 variables no longer point to the original input files
             rm -fv "${OLD_FQ}" "${OLD_FQ1}" "${OLD_FQ2}" 2>/dev/null
           else
-            echo rm -fv "${FQ}" "${FQ1}" "${FQ2}"
             if [ ${REMOVE_INPUT} -eq 1 ]; then
+              echo "Removing input files ${FQ} ${FQ1} ${FQ2}"
               rm -fv "${FQ}" "${FQ1}" "${FQ2}" 2>/dev/null
             fi
           fi
