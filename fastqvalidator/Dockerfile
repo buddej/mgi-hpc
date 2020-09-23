@@ -42,5 +42,19 @@ RUN apt-get update -y \
 ENV TZ "America/Chicago"
 
 COPY --from=builder /tmp/fastQValidator/bin/fastQValidator /usr/bin/
+# COPY ./entrypoint.sh /usr/local/bin/
 
-ENTRYPOINT ["fastQValidator","--noeof","--file"]
+# This has to be written with CMD for running with LSF/bsub, since you cannot bsub a job with no command specified (even a dockerapp)
+# This allows passing of additional parameters (e.g. --noeof) if required
+
+# Usage examples (rough -- these do not address passing in input file via ENV variable)
+#   Validating a normal .fq.gz
+#     sudo docker run -it buddej/fastqvalidator:0.1.6 
+#     bsub -Is -q research-hpc -a "docker(buddej/fastqvalidator:0.1.6)" entrypoint.sh
+#   Validating an .fq.gz missing the BGZF EOF marker
+#     sudo docker run -it buddej/fastqvalidator:0.1.6 entrypoint.sh --noeof
+#     bsub -Is -q research-hpc -a "docker(buddej/fastqvalidator:0.1.6)" entrypoint.sh --noeof
+
+# ENTRYPOINT ["fastQValidator","--noeof","--file"]
+# CMD ["/usr/local/bin/entrypoint.sh"]
+CMD ["/bin/bash"]
